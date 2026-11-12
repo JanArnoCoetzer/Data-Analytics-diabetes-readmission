@@ -6,12 +6,23 @@ Data Analytics CA2 project, following the CRISP-DM methodology. The model ranks 
 - **Source paper:** Strack et al. (2014), BioMed Research International. <https://doi.org/10.1155/2014/781670>
 - **Deadline:** Friday 4 December 2026
 
+## Project status
+
+| CRISP-DM phase | Status | Location |
+| --- | --- | --- |
+| Business Understanding | In progress | `Worksheets/Understanding_the_Problem.md` |
+| Data Understanding | Data dictionary done | `Data/DataMainTable/Data_Dictionary_and_Mapping_Guide.md` |
+| Data Preparation | Cleaning done; target column and ICD-9 grouping to do | `ipynb/DataPrep/` |
+| Modelling | Not started | |
+| Evaluation | Not started | |
+| Deployment (paper) | Not started | `Paper/CA2_Research_Report.md` |
+
 ## Software
 
 | Software | Purpose |
 | --- | --- |
 | [IntelliJ IDEA](https://www.jetbrains.com/idea/) (2025.3 or later, unified edition) | Main IDE for notebooks, Python code, Markdown and Git |
-| [Python](https://www.python.org/downloads/) 3.12 | Programming language for the analysis |
+| [Python](https://www.python.org/downloads/) 3.12 or later (developed on 3.15) | Programming language for the analysis |
 | Python virtual environment (`venv`) | Isolated, reproducible set of packages for this project |
 | [Jupyter](https://jupyter.org/) | Notebook environment, run inside IntelliJ |
 | [Git](https://git-scm.com/) | Version control |
@@ -34,7 +45,7 @@ The Ultimate subscription is free for students through the [JetBrains educationa
 
 | Library | Use in this project |
 | --- | --- |
-| `pandas` | Load `diabetic_data.csv`, split `IDS_mapping.csv` into three lookup tables, clean data, group ICD-9 codes |
+| `pandas` | Load and clean `diabetic_data.csv`, map ID codes to descriptions, group ICD-9 codes |
 | `numpy` | Numerical operations |
 | `matplotlib` | Plots for Data Understanding and the paper |
 | `seaborn` | Statistical plots, for example readmission rate by feature |
@@ -45,7 +56,7 @@ The Ultimate subscription is free for students through the [JetBrains educationa
 
 | Library | Use in this project |
 | --- | --- |
-| `fairlearn` | Compare model performance across `race` and `payer_code` for the bias discussion |
+| `fairlearn` | Compare model performance across `race` and `gender` for the bias discussion |
 | `imbalanced-learn` | Resampling (for example SMOTE) on the training data only, if class weights are not enough |
 | `ydata-profiling` | Automatic data profile report as a check during Data Understanding |
 | `shap` | Explain which features drive the predictions |
@@ -58,12 +69,12 @@ The Ultimate subscription is free for students through the [JetBrains educationa
 | `Pipeline`, `ColumnTransformer`, `OneHotEncoder` | Apply the same preprocessing to train and test data |
 | `DummyClassifier` | Baseline model |
 | `LogisticRegression`, `DecisionTreeClassifier` | Classification models, with `class_weight='balanced'` |
-| `recall_score`, `precision_score`, `average_precision_score` | Evaluation metrics suited to an 11% positive class |
+| `recall_score`, `precision_score`, `average_precision_score` | Evaluation metrics suited to a 9% positive class (after data preparation) |
 | `PrecisionRecallDisplay`, `ConfusionMatrixDisplay` | Evaluation figures |
 
 ## Setup
 
-1. Install IntelliJ IDEA, Python 3.15.2 and Git.
+1. Install IntelliJ IDEA, Python 3.12 or later, and Git.
 2. In IntelliJ IDEA, go to **Settings → Plugins** and install the **Python** and **Jupyter** plugins.
 3. Clone the repository:
    ```bash
@@ -83,26 +94,60 @@ The Ultimate subscription is free for students through the [JetBrains educationa
 6. In IntelliJ IDEA, set `.venv` as the project interpreter (**File → Project Structure → SDK**).
 7. Open or create a `.ipynb` file and run a cell. IntelliJ IDEA starts the Jupyter server automatically.
 
-### Loading the data correctly
+## Data preparation
+
+Two scripts prepare the data. Run them in sequence from the repository root. Each script finds its files from its own location, so the working directory does not matter.
+
+```bash
+python ipynb/DataPrep/1.clean_missing_and_categories.py
+python ipynb/DataPrep/2.remove_rows_and_columns.py
+```
+
+| Step | Script | Input | Output | Rows × columns |
+| --- | --- | --- | --- | --- |
+| 1. Clean values and labels | `1.clean_missing_and_categories.py` | `Data/DataMainTable/diabetic_data.csv` | `Data/processed_diabetic_data.csv` | 101,766 × 48 |
+| 2. Remove rows and columns | `2.remove_rows_and_columns.py` | `Data/processed_diabetic_data.csv` | `Data/cleaned_diabetic_data.csv` | 69,987 × 34 |
+
+**Step 1** changes `?` to an empty cell, `No` in the drug columns to `Not_Prescribed`, and `None` in the lab test columns to `Not_Tested`. It replaces the admission type, discharge disposition and admission source codes with short descriptions (unknown codes become empty) and removes `_id` from those column names. It also drops columns with no data (`examide`, `citoglipton`).
+
+**Step 2** removes stays that end in death or hospice, keeps only the first stay of each patient, and removes unknown gender. It drops `weight` and `payer_code`, groups `medical_specialty` (top 10, `Unknown`, `Other`), and merges rare drugs into `other_drugs`.
+
+[`ipynb/DataPrep/Data_Preparation.md`](ipynb/DataPrep/Data_Preparation.md) gives each action and the reason for it.
+
+### Loading the data
+
+Use the cleaned file for analysis and modelling:
 
 ```python
 import pandas as pd
 
-df = pd.read_csv("Data/diabetic_data.csv", keep_default_na=False, na_values=["?"])
+df = pd.read_csv(
+    "Data/cleaned_diabetic_data.csv",
+    dtype={"diag_1": str, "diag_2": str, "diag_3": str},  # keep codes like V57, 250.83
+)
 ```
 
-`keep_default_na=False` keeps the value `None` in `max_glu_serum` and `A1Cresult` as "test not done" instead of a missing value.
+The cleaned file contains no `?` or `None` text. Empty cells are the only missing values, so the default `read_csv` settings are correct. To load the original file, use `keep_default_na=False, na_values=["?"]`, or the value `None` ("test not done") becomes a missing value.
 
 ## Repository structure
 
 ```
 Data/
-  diabetic_data.csv                     Main dataset (101,766 encounters, 50 columns)
-  IDS_mapping.csv                       Lookup tables for admission and discharge IDs
-  Data_Dictionary_and_Mapping_Guide.md  Column definitions and mapping guide
+  DataMainTable/
+    diabetic_data.csv                     Original dataset (101,766 encounters, 50 columns)
+    IDS_mapping.csv                       Lookup tables for admission and discharge IDs
+    Data_Dictionary_and_Mapping_Guide.md  Column definitions and mapping guide
+  processed_diabetic_data.csv             Output of data preparation step 1
+  cleaned_diabetic_data.csv               Output of data preparation step 2 
+ipynb/
+  DataPrep/
+    1.clean_missing_and_categories.py     Data preparation step 1
+    2.remove_rows_and_columns.py          Data preparation step 2
+    Data_Preparation.md                   Each preparation action and the reason for it
 Paper/
-  Topic_Proposal.md                     Topic selection and reasoning
-  CA2_Research_Report.md                Four-page conference-style paper
+  Topic_Proposal.md                       Topic selection and reasoning
+  CA2_Research_Report.md                  Four-page conference-style paper
 Worksheets/
-  Understanding_the_Problem.md          Business Understanding worksheet
+  Understanding_the_Problem.md            Business Understanding worksheet
+README.md                                 This file
 ```
