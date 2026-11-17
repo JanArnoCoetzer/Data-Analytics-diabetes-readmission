@@ -1,15 +1,10 @@
-| MODULE TEMPLATE • DELETE ALL GREEN GUIDANCE TEXT BEFORE SUBMISSION |
-| --- |
+# Prioritising Follow-Up Care: Predicting 30-Day Readmission of Diabetic Patients from Hospital Encounter Data
 
-# [Concise, Informative Title of the Analytics Project]
+Jan Arno Coetzer • T00206990 • Computing with Games Development
 
-[Student Name]  •  [Student Number]  •  [Programme]
+Data Analytics-49295 (DBMS71008) |  Andrew Shields |  4 December 2026
 
-[Module Code and Title]  |  [Lecturer]  |  [Submission Date]
-
-GitHub repository: [INSERT ACCESSIBLE REPOSITORY URL]
-
-> [GUIDANCE: Use a specific title that identifies the problem, domain and analytical method where appropriate. Do not add a separate cover page. For authorised group work, list all members and student numbers.]
+GitHub repository: https://github.com/JanArnoCoetzer/Data-Analytics-diabetes-readmission
 
 ## Abstract
 
@@ -30,44 +25,53 @@ Keywords: [four to six terms, separated by commas]
 | Concise explanation of reproducible method | Runnable implementation and environment/data-access instructions |
 
 ## 1. Introduction and Business Context
-
-> [GUIDANCE: Explain the domain, specific problem, intended users or stakeholders, why the problem matters, the analytical objective and the contribution of the project. State the research or analytical question clearly. Do not begin with the chosen algorithm.]
-
+[GUIDANCE: Explain the domain, specific problem, intended users or stakeholders, why the problem matters, the analytical objective and the contribution of the project. State the research or analytical question clearly. Do not begin with the chosen algorithm.]
 [Write the introduction and business context here. Recommended focus: problem, stakeholders, practical objective, analytics objective, scope and contribution.]
 
-[Continue writing here]
+An early readmission after a hospital stay costs money and can cause harm to the patient. In the United States, the Hospital Readmissions Reduction Program decreases Medicare payments to hospitals that have too many readmissions. The maximum decrease is 3% [1]. Patients with diabetes have a higher risk. Studies show a 30-day readmission rate of 14.4–22.7% for patients with diabetes and 8.5–13.5% for all patients [2].
 
-[Continue writing here]
+This project supports one decision: which diabetic patients must get follow-up care after discharge. Examples of follow-up care are a telephone call, a medication review or an early clinic visit. The users are discharge-planning teams and diabetes care teams. These teams have limited resources. A model that sorts patients by risk can help the teams to give care to the patients with the highest risk. The model gives support to the decision, but it does not replace clinical judgment.
+
+The analytical objective is to predict, at discharge, if a diabetic inpatient will return to hospital in 30 days. The data is the Diabetes 130-US Hospitals dataset [3]. The task is binary classification, and the positive class is rare. For technical success, the model must have better recall and average precision than a majority-class baseline. For practical success, the model must flag a manageable number of patients and find a useful part of the early readmissions.
+
+The project uses the CRISP-DM process [4]. This version of the paper shows Business Understanding, Data Understanding and Data Preparation. Modelling and evaluation are not complete.
 
 ## 2. Background and Related Work
-
-> [GUIDANCE: Synthesize a small number of credible sources relevant to the domain, data and analytical method. Explain how prior work informs this investigation. Do not write a source-by-source annotated list. Verify every reference, including references suggested by AI tools.]
-
+[GUIDANCE: Synthesize a small number of credible sources relevant to the domain, data and analytical method. Explain how prior work informs this investigation. Do not write a source-by-source annotated list. Verify every reference, including references suggested by AI tools.]
 [Introduce and compare the most relevant literature. Use numbered citations such as [1], [2] and [3]. Explain the gap or rationale for the present investigation.]
 
-[Continue writing here]
+Strack et al. [5] first used this dataset. They examined if HbA1c measurement has an effect on readmission. They kept only the first encounter of each patient, so that each row is independent. They also removed encounters that ended in death or discharge to a hospice. The result was 69,984 encounters.
 
-[Continue writing here]
+In these encounters, the hospital measured HbA1c in only 18.4%. The relation between HbA1c measurement and readmission changed with the primary diagnosis [5]. Thus, a model of this data must include the diagnosis. 
+Strack et al. also removed weight (97% missing) and payer code. They kept medical specialty and added a “missing” value [5]. This project uses the same cohort rules, so that its results are comparable with the source study.
+
+Kansagara et al. [6] reviewed 26 readmission risk models. Most models had poor performance. The c-statistics were between 0.55 and 0.83, and only six studies had a value above 0.70. Few models used illness severity, functional status or social determinants of health [6].
+This dataset also does not have these variables. Thus, the expected discrimination is moderate.
+
+Early readmission is rare, so accuracy is not a good measure. A model that always predicts “no readmission” has approximately 91% accuracy on the prepared data. But this model does not help the decision. Thus, the evaluation uses recall, precision and average precision for the positive class.
 
 ## 3. Data and Methodology
-
-> [GUIDANCE: Summarise the method sufficiently for a technically informed reader to understand and reproduce the approach. Detailed code and the full preparation log belong in the notebook.]
+[GUIDANCE: Summarise the method sufficiently for a technically informed reader to understand and reproduce the approach. Detailed code and the full preparation log belong in the notebook.]
 
 ### 3.1 Data Source and Scope
+[GUIDANCE: Identify the source, licence or permission, access date, population, time period, geography, sample size and unit of analysis. Define the target and the most important features. Refer to the original data publisher where possible.]
 
-> [GUIDANCE: Identify the source, licence or permission, access date, population, time period, geography, sample size and unit of analysis. Define the target and the most important features. Refer to the original data publisher where possible.]
+The data is the Diabetes 130-US Hospitals for Years 1999–2008 dataset from the UCI Machine Learning Repository [3]. Clore, Cios, DeShazo and Strack made the dataset. The CC BY 4.0 licence permits use with attribution. The data shows ten years of clinical care at 130 US hospitals.
 
-[Describe the dataset and its provenance here.]
+Each row is one inpatient encounter. Each encounter agrees with five criteria: an inpatient admission, a diabetes diagnosis, a stay of 1–14 days, laboratory tests and medications [3]. The raw file has 101,766 encounters and 50 columns. The columns contain identifiers, demographics, admission data, counts of hospital use, three ICD-9 diagnosis codes, two laboratory results, 23 diabetes medications and the readmission outcome.
 
-[Continue writing here]
-
+A second file, IDS_mapping.csv, gives the descriptions of the admission type, discharge disposition and admission source codes. The data has no names or other direct identifiers. Date of data access: 6 November 2026.
 ### 3.2 Data Understanding and Quality
 
 > [GUIDANCE: Summarise the most important descriptive findings and quality issues. Quantify missingness, imbalance, inconsistencies, unusual values or representativeness concerns where relevant. Select only findings that affect the project question or method.]
 
-[Summarise the evidence from Data Understanding here.]
+The unit of analysis is important. The 101,766 encounters are from 71,518 patients. Of these patients, 16,773 have more than one encounter, with a maximum of 40. The encounters of one patient are not independent. If they are in the training data and in the test data, the evaluation results are too high.
 
-[Continue writing here]
+The dataset uses “?” for missing values. Weight is missing in 96.9% of encounters, medical specialty in 49.1%, payer code in 39.6% and race in 2.2%. The primary, secondary and tertiary diagnoses are missing in 21, 358 and 1,423 encounters. Three encounters have an unknown gender. Some ID codes, for example “NULL”, “Not Mapped” and “Not Available”, are also missing values.
+
+Laboratory tests are not frequent. The hospitals measured HbA1c in 16.7% of encounters and maximum glucose serum in 5.3%. Thus, “None” means “not tested”. It does not mean a normal result. Two medications, examide and citoglipton, have the same value in all rows.
+
+The target is not balanced. Of all encounters, 53.9% had no readmission and 34.9% had a readmission after more than 30 days. Only 11.2% had a readmission in 30 days. Most patients are old: 67.3% of encounters are for patients of 60 years or more. Of the encounters with a recorded race, 76.5% are Caucasian.
 
 ### 3.3 Data Preparation
 
@@ -75,7 +79,7 @@ Keywords: [four to six terms, separated by commas]
 
 [Summarise and justify the principal preparation decisions here.]
 
-[Continue writing here]
+
 
 ### 3.4 Modelling and Evaluation Design
 
@@ -169,17 +173,19 @@ Figure 1. [Describe what is shown, the dataset or subset, and any essential unit
 
 ## References
 
-> [GUIDANCE: Use IEEE numbered citations in order of first appearance. Every in-text citation must have a matching reference and every listed reference must be cited. Check author names, title, venue, volume, issue, pages, year, DOI or URL and access date as applicable.]
+[1] Centers for Medicare & Medicaid Services, “Hospital Readmissions Reduction Program (HRRP).” [Online]. Available: https://www.cms.gov/medicare/payment/prospective-payment-systems/acute-inpatient-pps/hospital-readmissions-reduction-program-hrrp. [Accessed: Nov. 17, 2026].
 
-[1] A. A. Author and B. B. Author, “Title of journal article,” Journal Title, vol. 12, no. 3, pp. 100–115, 2025, doi: 10.xxxx/xxxxx.
+[2] S. Ostling, J. Wyckoff, S. L. Ciarkowski, C.-W. Pai, H. M. Choe, V. Bahl, and R. Gianchandani, “The relationship between diabetes mellitus and 30-day readmission rates,” Clinical Diabetes and Endocrinology, vol. 3, Art. no. 3, 2017, doi: 10.1186/s40842-016-0040-x.
 
-[2] Organisation Name, “Title of dataset or documentation,” Year. [Online]. Available: https://example.org. [Accessed: DD-Mmm-YYYY].
+[3] J. Clore, K. Cios, J. DeShazo, and B. Strack, “Diabetes 130-US Hospitals for Years 1999–2008,” UCI Machine Learning Repository, 2014. [Online]. Available: https://doi.org/10.24432/C5230J. [Accessed: Nov. 17, 2026].
 
-[3] C. C. Author, Title of Book, 2nd ed. City, Country: Publisher, 2024.
+[4] R. Wirth and J. Hipp, “CRISP-DM: Towards a standard process model for data mining,” in Proc. 4th Int. Conf. Practical Applications of Knowledge Discovery and Data Mining, 2000, pp. 29–39.
 
-[4] D. D. Author, “Title of conference paper,” in Proc. Conference Name, City, Country, 2025, pp. 1–8.
+[5] B. Strack, J. P. DeShazo, C. Gennings, J. L. Olmo, S. Ventura, K. J. Cios, and J. N. Clore, “Impact of HbA1c measurement on hospital readmission rates: Analysis of 70,000 clinical database patient records,” BioMed Research International, vol. 2014, Art. no. 781670, 2014, doi: 10.1155/2014/781670.
 
-> [GUIDANCE: Replace all examples above. Prioritise original peer-reviewed research, authoritative documentation and the original data source. Do not cite an AI-generated summary as evidence for a factual claim.]
+[6] D. Kansagara, H. Englander, A. Salanitro, D. Kagen, C. Theobald, M. Freeman, and S. Kripalani, “Risk prediction models for hospital readmission: A systematic review,” JAMA, vol. 306, no. 15, pp. 1688–1698, 2011, doi: 10.1001/jama.2011.1515.
+
+
 
 ## Final Template Check
 
