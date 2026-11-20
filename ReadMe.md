@@ -77,3 +77,9 @@ Paper/
 Worksheets/
   Understanding_the_Problem.md            Business Understanding worksheet
 ReadMe.md                                 This file
+
+
+## Models to concider
+-random forest decision tree
+-Support Vector Machine 
+-logstic regression
